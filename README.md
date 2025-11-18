@@ -13,6 +13,7 @@ Solução escalável para comparação e matching de milhões de registros de pe
 - ✅ **Infraestrutura como Código**: Terraform para toda infraestrutura AWS
 - ✅ **Auto-scaling**: Escalabilidade automática baseada em carga
 - ✅ **Multi-algoritmos**: Combinação de Levenshtein, Jaro-Winkler e Soundex
+- ✅ **Segurança Hardened**: 93%+ compliance com Checkov security checks
 
 ## 🏗️ Arquitetura
 
@@ -275,8 +276,47 @@ for hit in response['hits']['hits']:
 
 ## 🛡️ Segurança
 
-- ✅ Buckets S3 com criptografia AES-256
-- ✅ OpenSearch em VPC privada
+### Compliance & Hardening
+
+- ✅ **93%+ Checkov Compliance** (14 de 500+ checks falhando)
+- ✅ **Criptografia KMS**: Todas as camadas (S3, DynamoDB, OpenSearch, ElastiCache, Lambda, Secrets Manager, CloudWatch Logs)
+- ✅ **7 KMS Keys**: Segregação por serviço com políticas específicas
+- ✅ **Secrets Manager**: Auth tokens e senhas rotacionáveis
+- ✅ **Network Isolation**: Recursos em VPC privada com Security Groups restritos
+- ✅ **IAM Least Privilege**: Políticas específicas sem wildcards
+- ✅ **Audit Logging**: VPC Flow Logs, OpenSearch Audit Logs, CloudWatch com retenção de 365 dias
+- ✅ **S3 Hardening**: Public Access Block, Versioning, Access Logging, Lifecycle Policies
+- ✅ **Multi-AZ**: ElastiCache com failover automático
+- ✅ **EMR Security**: At-rest e in-transit encryption
+- ✅ **Glue Encryption**: CloudWatch, Job Bookmarks e S3 encryption
+
+### Recursos de Segurança Implementados
+
+| Recurso | Encryption | Access Control | Monitoring | Backup/HA |
+|---------|-----------|----------------|------------|-----------|
+| S3 Buckets | KMS-CMK | Public Block + IAM | Access Logs | Versioning |
+| DynamoDB | KMS-CMK | IAM | CloudWatch | Point-in-time |
+| OpenSearch | KMS-CMK | VPC + Fine-grained AC | 4 tipos de logs | Multi-AZ |
+| ElastiCache | KMS-CMK + TLS | VPC + Auth Token | CloudWatch | Multi-AZ |
+| Lambda | KMS env vars | IAM + VPC | X-Ray + DLQ | N/A |
+| EMR | SSE-KMS | IAM + SGs | CloudWatch | N/A |
+| Secrets | KMS-CMK | IAM | CloudWatch | 30d recovery |
+
+### Análise de Segurança
+
+Para executar scan de segurança:
+
+```bash
+cd terraform
+checkov -d . --framework terraform --compact
+
+# Gerar relatório HTML
+checkov -d . --output html --output-file-path ../checkov-report.html
+```
+
+Documentação completa em:
+- `SECURITY_FIXES_IMPLEMENTED.md` - Todas as correções aplicadas
+- `SECURITY_RECOMMENDATIONS.md` - Recomendações e próximos passos
 - ✅ Redis com criptografia em trânsito e repouso
 - ✅ IAM roles com princípio de menor privilégio
 - ✅ VPC endpoints para S3 e DynamoDB
