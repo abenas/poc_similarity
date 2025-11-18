@@ -1,0 +1,39 @@
+# Example Terraform variables
+# Copy this file to terraform.tfvars and adjust values
+
+aws_region  = "us-east-1"
+environment = "dev"
+
+project_name = "person-matching"
+
+# VPC
+vpc_cidr = "10.0.0.0/16"
+
+# EMR Configuration
+emr_release_label       = "emr-7.0.0"
+emr_master_instance_type = "m5.xlarge"
+emr_core_instance_type   = "m5.2xlarge"
+emr_core_instance_count  = 3
+
+# Auto-scaling
+enable_emr_autoscaling = true
+emr_min_capacity      = 2
+emr_max_capacity      = 10
+
+# OpenSearch Configuration
+opensearch_instance_type    = "r6g.xlarge.search"
+opensearch_instance_count   = 3
+opensearch_ebs_volume_size = 100
+
+# ElastiCache Configuration
+elasticache_node_type        = "cache.r6g.xlarge"
+elasticache_num_cache_nodes = 2
+
+# Glue
+glue_database_name = "person_data"
+
+# Lambda Schedule (4 times per day)
+lambda_schedule_expression = "rate(6 hours)"
+
+# Matching threshold (0-1)
+matching_threshold = 0.7

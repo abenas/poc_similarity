@@ -1,0 +1,48 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+terraform.tfvars
+tfplan
+lambda_function.zip
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log
+
+# Data
+/data/*.parquet
+/data/*.csv
+/notebooks/*.ipynb_checkpoints
+
+# AWS
+.aws/
+*.pem
+
+# Logs
+logs/
+*.log
