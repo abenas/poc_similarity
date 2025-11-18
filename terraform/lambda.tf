@@ -71,6 +71,21 @@ resource "aws_iam_role_policy" "lambda_policy" {
           "ec2:DeleteNetworkInterface"
         ]
         Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "xray:PutTraceSegments",
+          "xray:PutTelemetryRecords"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "sqs:SendMessage"
+        ]
+        Resource = aws_sqs_queue.lambda_dlq.arn
       }
     ]
   })
@@ -92,6 +107,16 @@ resource "aws_lambda_function" "delta_detector" {
     security_group_ids = [aws_security_group.lambda.id]
   }
 
+  tracing_config {
+    mode = "Active"
+  }
+
+  dead_letter_config {
+    target_arn = aws_sqs_queue.lambda_dlq.arn
+  }
+
+  reserved_concurrent_executions = 10
+
   environment {
     variables = {
       DATASET1_BUCKET  = aws_s3_bucket.data_source1.id
@@ -108,8 +133,22 @@ resource "aws_lambda_function" "delta_detector" {
     }
   }
 
+  kms_key_arn = aws_kms_key.lambda.arn
+
   tags = {
     Name = "${var.project_name}-delta-detector"
+  }
+}
+
+# Dead Letter Queue for Lambda
+resource "aws_sqs_queue" "lambda_dlq" {
+  name                              = "${var.project_name}-lambda-dlq"
+  kms_master_key_id                 = aws_kms_key.sqs.id
+  kms_data_key_reuse_period_seconds = 300
+  message_retention_seconds         = 345600
+
+  tags = {
+    Name = "${var.project_name}-lambda-dlq"
   }
 }
 
@@ -127,10 +166,19 @@ resource "aws_security_group" "lambda" {
   description = "Security group for Lambda functions"
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    cidr_blocks     = ["0.0.0.0/0"]
+    description     = "HTTPS to internet for AWS services"
+  }
+
+  egress {
+    from_port       = 0
+    to_port         = 65535
+    protocol        = "tcp"
+    cidr_blocks     = [var.vpc_cidr]
+    description     = "All TCP to VPC"
   }
 
   tags = {
@@ -183,7 +231,8 @@ resource "aws_lambda_permission" "allow_s3_source2" {
 # CloudWatch Log Group for Lambda
 resource "aws_cloudwatch_log_group" "lambda" {
   name              = "/aws/lambda/${aws_lambda_function.delta_detector.function_name}"
-  retention_in_days = 14
+  retention_in_days = 365
+  kms_key_id        = aws_kms_key.logs.arn
 
   tags = {
     Name = "${var.project_name}-lambda-logs"

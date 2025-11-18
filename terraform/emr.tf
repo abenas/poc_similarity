@@ -5,10 +5,19 @@ resource "aws_security_group" "emr_master" {
   description = "Security group for EMR master node"
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port       = 0
+    to_port         = 65535
+    protocol        = "tcp"
+    cidr_blocks     = [var.vpc_cidr]
+    description     = "Allow all TCP to VPC"
+  }
+
+  egress {
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    cidr_blocks     = ["0.0.0.0/0"]
+    description     = "HTTPS to internet for AWS services"
   }
 
   tags = {
@@ -22,10 +31,19 @@ resource "aws_security_group" "emr_slave" {
   description = "Security group for EMR slave nodes"
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port       = 0
+    to_port         = 65535
+    protocol        = "tcp"
+    cidr_blocks     = [var.vpc_cidr]
+    description     = "Allow all TCP to VPC"
+  }
+
+  egress {
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    cidr_blocks     = ["0.0.0.0/0"]
+    description     = "HTTPS to internet for AWS services"
   }
 
   tags = {
@@ -179,11 +197,40 @@ resource "aws_iam_role_policy_attachment" "emr_autoscaling_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonElasticMapReduceforAutoScalingRole"
 }
 
+# EMR Security Configuration
+resource "aws_emr_security_configuration" "main" {
+  name = "${var.project_name}-emr-security-config"
+
+  configuration = jsonencode({
+    EncryptionConfiguration = {
+      EnableInTransitEncryption = true
+      EnableAtRestEncryption    = true
+      InTransitEncryptionConfiguration = {
+        TLSCertificateConfiguration = {
+          CertificateProviderType = "PEM"
+          S3Object               = "s3://${aws_s3_bucket.scripts.id}/certificates/"
+        }
+      }
+      AtRestEncryptionConfiguration = {
+        S3EncryptionConfiguration = {
+          EncryptionMode = "SSE-KMS"
+          AwsKmsKey      = aws_kms_key.s3.arn
+        }
+        LocalDiskEncryptionConfiguration = {
+          EncryptionKeyProviderType = "AwsKms"
+          AwsKmsKey                 = aws_kms_key.s3.arn
+        }
+      }
+    }
+  })
+}
+
 # EMR Cluster
 resource "aws_emr_cluster" "main" {
-  name          = "${var.project_name}-cluster"
-  release_label = var.emr_release_label
-  applications  = ["Spark", "Hadoop", "Hive", "Livy"]
+  name                    = "${var.project_name}-cluster"
+  release_label           = var.emr_release_label
+  applications            = ["Spark", "Hadoop", "Hive", "Livy"]
+  security_configuration  = aws_emr_security_configuration.main.name
 
   ec2_attributes {
     subnet_id                         = aws_subnet.private[0].id

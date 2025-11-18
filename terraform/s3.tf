@@ -69,75 +69,23 @@ resource "aws_s3_bucket_versioning" "results" {
   }
 }
 
-# S3 Lifecycle Policies
-resource "aws_s3_bucket_lifecycle_configuration" "results" {
-  bucket = aws_s3_bucket.results.id
+resource "aws_s3_bucket_versioning" "scripts" {
+  bucket = aws_s3_bucket.scripts.id
 
-  rule {
-    id     = "archive-old-results"
+  versioning_configuration {
     status = "Enabled"
-
-    transition {
-      days          = 30
-      storage_class = "STANDARD_IA"
-    }
-
-    transition {
-      days          = 90
-      storage_class = "GLACIER"
-    }
-
-    expiration {
-      days = 365
-    }
   }
 }
 
-resource "aws_s3_bucket_lifecycle_configuration" "logs" {
+resource "aws_s3_bucket_versioning" "logs" {
   bucket = aws_s3_bucket.logs.id
 
-  rule {
-    id     = "expire-old-logs"
+  versioning_configuration {
     status = "Enabled"
-
-    expiration {
-      days = 90
-    }
   }
 }
 
-# S3 Bucket Encryption
-resource "aws_s3_bucket_server_side_encryption_configuration" "data_source1" {
-  bucket = aws_s3_bucket.data_source1.id
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-}
-
-resource "aws_s3_bucket_server_side_encryption_configuration" "data_source2" {
-  bucket = aws_s3_bucket.data_source2.id
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-}
-
-resource "aws_s3_bucket_server_side_encryption_configuration" "results" {
-  bucket = aws_s3_bucket.results.id
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-}
-
-# Block Public Access
+# S3 Public Access Block
 resource "aws_s3_bucket_public_access_block" "data_source1" {
   bucket = aws_s3_bucket.data_source1.id
 
@@ -163,6 +111,162 @@ resource "aws_s3_bucket_public_access_block" "results" {
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_public_access_block" "scripts" {
+  bucket = aws_s3_bucket.scripts.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_public_access_block" "logs" {
+  bucket = aws_s3_bucket.logs.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# S3 Lifecycle Policies
+resource "aws_s3_bucket_lifecycle_configuration" "results" {
+  bucket = aws_s3_bucket.results.id
+
+  rule {
+    id     = "archive-old-results"
+    status = "Enabled"
+
+    filter {
+      prefix = ""
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+
+    transition {
+      days          = 30
+      storage_class = "STANDARD_IA"
+    }
+
+    transition {
+      days          = 90
+      storage_class = "GLACIER"
+    }
+
+    expiration {
+      days = 365
+    }
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "logs" {
+  bucket = aws_s3_bucket.logs.id
+
+  rule {
+    id     = "expire-old-logs"
+    status = "Enabled"
+
+    filter {
+      prefix = ""
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 7
+    }
+
+    expiration {
+      days = 90
+    }
+  }
+}
+
+# S3 Bucket Encryption
+resource "aws_s3_bucket_server_side_encryption_configuration" "data_source1" {
+  bucket = aws_s3_bucket.data_source1.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.s3.arn
+    }
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "data_source2" {
+  bucket = aws_s3_bucket.data_source2.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.s3.arn
+    }
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "results" {
+  bucket = aws_s3_bucket.results.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.s3.arn
+    }
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "scripts" {
+  bucket = aws_s3_bucket.scripts.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.s3.arn
+    }
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "logs" {
+  bucket = aws_s3_bucket.logs.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = aws_kms_key.s3.arn
+    }
+  }
+}
+
+# S3 Access Logging
+resource "aws_s3_bucket_logging" "data_source1" {
+  bucket = aws_s3_bucket.data_source1.id
+
+  target_bucket = aws_s3_bucket.logs.id
+  target_prefix = "s3-access-logs/data-source1/"
+}
+
+resource "aws_s3_bucket_logging" "data_source2" {
+  bucket = aws_s3_bucket.data_source2.id
+
+  target_bucket = aws_s3_bucket.logs.id
+  target_prefix = "s3-access-logs/data-source2/"
+}
+
+resource "aws_s3_bucket_logging" "results" {
+  bucket = aws_s3_bucket.results.id
+
+  target_bucket = aws_s3_bucket.logs.id
+  target_prefix = "s3-access-logs/results/"
+}
+
+resource "aws_s3_bucket_logging" "scripts" {
+  bucket = aws_s3_bucket.scripts.id
+
+  target_bucket = aws_s3_bucket.logs.id
+  target_prefix = "s3-access-logs/scripts/"
 }
 
 # S3 Event Notifications
